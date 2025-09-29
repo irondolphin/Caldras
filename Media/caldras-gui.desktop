@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=caldras-gui
+Exec=/usr/local/bin/caldras-gui
+Icon=/home/alessandro/Immagini/icone/Caldras.png
+Categories=Office;Utility;
+Type=Application
+GenericName=note
+StartupWMClass=Tk
+Terminal=false

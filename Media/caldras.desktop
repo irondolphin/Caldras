@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Caldras GUI
+Comment=Archivio orbitale per note cifrate
+Exec=python3 /usr/local/bin/caldras-gui
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Utility;TextEditor;
+StartupNotify=true
+
