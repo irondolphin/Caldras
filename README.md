@@ -7,7 +7,7 @@
 <ul>
   <li><code>caldras</code> — versione <strong>terminal-based</strong> per Linux</li>
   <li><code>caldras-gui</code> — versione <strong>console-style GUI</strong> per Linux</li>
-  <li><a href="https://wcaldras.py">wcaldras.py</a> — versione <strong>terminal-based</strong> per Windows</li>
+  <li><code>wcaldras.py</code> — versione <strong>terminal-based</strong> per Windows</li>
   <li><code>wcaldras_gui.py</code> — versione <strong>console-style GUI</strong> per Windows</li>
 </ul>
 <p>Tutte le versioni condividono lo stesso file dati: <strong><a href="https://note.dat">note.dat</a></strong></p>
