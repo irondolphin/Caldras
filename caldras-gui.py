@@ -108,40 +108,39 @@ class CaldrasApp(tk.Tk):
         self.pane_main.pack(fill=tk.BOTH, expand=True)
 
         self.search_frame = tk.Frame(self.pane_main, bg="#0e0f12")
-        self.search_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=(5, 5))
+        self.search_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=(5, 0))
 
         self.search_var = tk.StringVar()
         self.search_entry = tk.Entry(self.search_frame, textvariable=self.search_var,
-                                font=FONT_CONSOLE, bg="#16232f", fg="#c6f6ff",
-                                insertbackground="#76f6ff", relief=tk.SOLID,
-                                borderwidth=1, highlightthickness=0)
+                                     font=FONT_CONSOLE, bg="#16232f", fg="#c6f6ff",
+                                     insertbackground="#76f6ff", relief=tk.FLAT)
         self.search_entry.pack(fill=tk.X, padx=2)
         self.search_var.trace("w", lambda *args: self.refresh_list())
 
         self.note_list = tk.Listbox(self.pane_main, width=30, font=FONT_CONSOLE,
                                     bg="#16232f", fg="#c6f6ff", selectbackground="#76f6ff",
-                                    selectforeground="#0e0f12", relief=tk.SOLID,
-                                    borderwidth=1, highlightthickness=0)
-        self.note_list.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0), pady=(0, 5))
+                                    selectforeground="#0e0f12", relief=tk.FLAT)
+        self.note_list.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
         self.note_list.bind("<<ListboxSelect>>", self.on_select)
 
-        self.right = tk.Frame(self.pane_main, bg="#0e0f12")
-        self.right.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        self.right_frame = tk.Frame(self.pane_main, bg="#0e0f12")
+        self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        self.pane_editor = tk.PanedWindow(self.right, orient=tk.HORIZONTAL, bg="#0e0f12",
-                                     relief=tk.FLAT, borderwidth=0, sashwidth=1,
-                                     sashrelief=tk.FLAT, sashpad=0)
-        self.pane_editor.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+        pane_editor = tk.PanedWindow(self.right_frame, orient=tk.HORIZONTAL, bg="#0e0f12")
+        pane_editor.pack(fill=tk.BOTH, expand=True)
 
-        self.text_area = tk.Text(self.pane_editor, wrap=tk.WORD, font=FONT_CONSOLE,
+        self.text_area = tk.Text(pane_editor, wrap=tk.WORD, font=FONT_CONSOLE,
                                  bg="#16232f", fg="#c6f6ff", insertbackground="#76f6ff",
-                                 relief=tk.SOLID, borderwidth=1, highlightthickness=0)
-        self.pane_editor.add(self.text_area)
+                                 relief=tk.FLAT)
+        # Bind per aggiornamento automatico anteprima
+        self.text_area.bind("<KeyRelease>", self.update_preview)
+        self.text_area.bind("<ButtonRelease>", self.update_preview)
+        pane_editor.add(self.text_area)
 
-        self.preview = tk.Text(self.pane_editor, wrap=tk.WORD, state=tk.DISABLED,
+        self.preview = tk.Text(pane_editor, wrap=tk.WORD, state=tk.DISABLED,
                                font=FONT_CONSOLE, bg="#16232f", fg="#c6f6ff",
-                               relief=tk.SOLID, borderwidth=1, highlightthickness=0)
-        self.pane_editor.add(self.preview)
+                               relief=tk.FLAT)
+        pane_editor.add(self.preview)
 
         self.bottom = tk.Frame(self, height=50, bg="#0e0f12")
         self.bottom.pack(side=tk.BOTTOM, fill=tk.X)
@@ -169,24 +168,28 @@ class CaldrasApp(tk.Tk):
         if self.theme == "alien-dark":
             bg, fg, edt = "#0e0f12", "#c6f6ff", "#16232f"
             accent = "#76f6ff"
-            border_color = "#2a3b47"
         else:
             bg, fg, edt = "#f8f9fc", "#28323a", "#ffffff"
             accent = "#37a3c6"
-            border_color = "#d0d0d0"
 
+        # Finestra principale e frame
         self.configure(bg=bg)
         self.pane_main.configure(bg=bg)
         self.search_frame.configure(bg=bg)
-        self.right.configure(bg=bg)
-        self.pane_editor.configure(bg=bg)
-        # Configura gli elementi con bordi dinamici
-        self.search_entry.configure(bg=edt, fg=fg, insertbackground=accent, highlightcolor=border_color)
-        self.note_list.configure(bg=edt, fg=fg, selectbackground=accent, selectforeground=bg, highlightcolor=border_color)
-        self.text_area.configure(bg=edt, fg=fg, insertbackground=accent, highlightcolor=border_color)
-        self.preview.configure(bg=edt, fg=fg, state=tk.DISABLED, highlightcolor=border_color)
+        self.right_frame.configure(bg=bg)
         self.bottom.configure(bg=bg)
+        
+        # Barra di ricerca
+        self.search_entry.configure(bg=edt, fg=fg, insertbackground=accent)
+        
+        # Lista note
+        self.note_list.configure(bg=edt, fg=fg, selectbackground=accent, selectforeground=bg)
+        
+        # Area di testo e anteprima
+        self.text_area.configure(bg=edt, fg=fg, insertbackground=accent)
+        self.preview.configure(bg=edt, fg=fg, state=tk.DISABLED)
 
+        # Pulsanti
         for btn in self.buttons:
             btn.configure(bg=edt, fg=fg,
                           activebackground=accent,
@@ -204,17 +207,148 @@ class CaldrasApp(tk.Tk):
         event.widget.configure(bg=bg, fg=fg)
 
     def update_preview(self, event=None):
-        md = self.text_area.get("1.0", tk.END)
-        html = markdown.markdown(md)
-        clean = self.clean_html(html)
+        md_text = self.text_area.get("1.0", tk.END)
         self.preview.configure(state=tk.NORMAL)
         self.preview.delete("1.0", tk.END)
-        self.preview.insert(tk.END, clean)
+        
+        # Configura i tag per la formattazione
+        self.setup_preview_tags()
+        
+        # Renderizza il markdown con formattazione
+        self.render_markdown_to_text(md_text)
+        
         self.preview.configure(state=tk.DISABLED)
 
-    def clean_html(self, html):
+    def setup_preview_tags(self):
+        """Configura i tag per la formattazione del testo nell'anteprima"""
+        if self.theme == "alien-dark":
+            fg_normal = "#c6f6ff"
+            fg_header = "#76f6ff"
+            fg_bold = "#ffffff"
+            fg_italic = "#b9e3ff"
+            fg_code = "#ffb347"
+        else:
+            fg_normal = "#28323a"
+            fg_header = "#37a3c6"
+            fg_bold = "#000000"
+            fg_italic = "#555555"
+            fg_code = "#d63384"
+            
+        # Header styles
+        self.preview.tag_config("h1", foreground=fg_header, font=("Cascadia Code", 16, "bold"))
+        self.preview.tag_config("h2", foreground=fg_header, font=("Cascadia Code", 14, "bold"))
+        self.preview.tag_config("h3", foreground=fg_header, font=("Cascadia Code", 12, "bold"))
+        
+        # Text styles
+        self.preview.tag_config("bold", foreground=fg_bold, font=("Cascadia Code", 11, "bold"))
+        self.preview.tag_config("italic", foreground=fg_italic, font=("Cascadia Code", 11, "italic"))
+        self.preview.tag_config("code", foreground=fg_code, font=("Consolas", 10), background="#2d2d2d" if self.theme == "alien-dark" else "#f5f5f5")
+        self.preview.tag_config("blockquote", foreground=fg_italic, font=("Cascadia Code", 11, "italic"))
+        
+    def render_markdown_to_text(self, md_text):
+        """Converte markdown in testo formattato per tkinter"""
         import re
-        return re.sub(r"<[^>]+>", "", html)
+        
+        lines = md_text.split('\n')
+        
+        for line_num, line in enumerate(lines):
+            # Headers
+            if line.startswith('### '):
+                self.preview.insert(tk.END, line[4:] + '\n', "h3")
+            elif line.startswith('## '):
+                self.preview.insert(tk.END, line[3:] + '\n', "h2")
+            elif line.startswith('# '):
+                self.preview.insert(tk.END, line[2:] + '\n', "h1")
+            
+            # Blockquotes
+            elif line.startswith('> '):
+                self.preview.insert(tk.END, "❯ " + line[2:] + '\n', "blockquote")
+            
+            # Lists
+            elif re.match(r'^\s*[-*+]\s', line):
+                indent = len(line) - len(line.lstrip())
+                bullet = "  " * (indent // 2) + "• "
+                content = re.sub(r'^\s*[-*+]\s', '', line)
+                self.preview.insert(tk.END, bullet)
+                self.format_inline_text(content + '\n')
+            
+            # Numbered lists
+            elif re.match(r'^\s*\d+\.\s', line):
+                indent = len(line) - len(line.lstrip())
+                prefix = "  " * (indent // 2)
+                match = re.match(r'^\s*(\d+)\.\s(.*)$', line)
+                if match:
+                    num, content = match.groups()
+                    self.preview.insert(tk.END, f"{prefix}{num}. ")
+                    self.format_inline_text(content + '\n')
+            
+            # Code blocks
+            elif line.startswith('```'):
+                if hasattr(self, '_in_code_block'):
+                    del self._in_code_block
+                    self.preview.insert(tk.END, '\n')
+                else:
+                    self._in_code_block = True
+                    lang = line[3:].strip()
+                    if lang:
+                        self.preview.insert(tk.END, f"[{lang}]\n", "code")
+            
+            elif hasattr(self, '_in_code_block'):
+                self.preview.insert(tk.END, line + '\n', "code")
+            
+            # Regular text
+            else:
+                if line.strip():  # Non-empty line
+                    self.format_inline_text(line + '\n')
+                else:  # Empty line
+                    self.preview.insert(tk.END, '\n')
+    
+    def format_inline_text(self, text):
+        """Formatta il testo inline (bold, italic, code)"""
+        import re
+        
+        # Split text into segments for formatting
+        pos = 0
+        
+        # Find and format inline code first
+        for match in re.finditer(r'`([^`]+)`', text):
+            # Insert normal text before code
+            if match.start() > pos:
+                self.format_bold_italic(text[pos:match.start()])
+            
+            # Insert code
+            self.preview.insert(tk.END, match.group(1), "code")
+            pos = match.end()
+        
+        # Insert remaining text
+        if pos < len(text):
+            self.format_bold_italic(text[pos:])
+    
+    def format_bold_italic(self, text):
+        """Formatta grassetto e corsivo"""
+        import re
+        
+        pos = 0
+        
+        # Process bold and italic
+        for match in re.finditer(r'\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*', text):
+            # Insert normal text before formatting
+            if match.start() > pos:
+                self.preview.insert(tk.END, text[pos:match.start()])
+            
+            # Determine formatting type
+            if match.group(1):  # Bold + Italic (***text***)
+                self.preview.insert(tk.END, match.group(1), ("bold", "italic"))
+            elif match.group(2):  # Bold (**text**)
+                self.preview.insert(tk.END, match.group(2), "bold")
+            elif match.group(3):  # Italic (*text*)
+                self.preview.insert(tk.END, match.group(3), "italic")
+            
+            pos = match.end()
+        
+        # Insert remaining normal text
+        if pos < len(text):
+            self.preview.insert(tk.END, text[pos:])
 
     def export_to_pdf(self):
         if self.current_index is None:
