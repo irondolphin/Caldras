@@ -5,7 +5,7 @@ Semplice applicazione per prendere **note cifrate** da shell o interfaccia grafi
 - `caldras` — versione **terminal-based**
 - `caldras-gui` — versione con **interfaccia grafica console-style**
 - `wcaldras.py` — versione **terminal-based** per windows
-- `wcaldras-gui.py` — versione con **interfaccia grafica console-style** per windows
+- `wcaldras_gui.py` — versione con **interfaccia grafica console-style** per windows
 
 Entrambe usano lo stesso file dati: **`.note.dat`**
 
