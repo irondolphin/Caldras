@@ -37,3 +37,5 @@ poi aggiungere il percorso di wkhtmltopdf nel path di sistema
 sotto endeavou os usare il comando `yay -S python-markdown python-markdown2 python-weasyprint python-cryptography tk python-rich`
 
 **Attenzione una volta reso eseguibile lo script creerà il file dat dentro la cartella in cui punta la shell**
+
+PS. questo software è nato per esigenze personale, il software è stato realizzato con l'ausilio dell'Ai.  
