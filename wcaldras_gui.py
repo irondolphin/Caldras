@@ -5,11 +5,38 @@ import pickle, os, base64, hashlib, markdown, json, tempfile, subprocess
 from cryptography.fernet import Fernet
 
 # 🛰️ Supporto PDF automatico
-try:
+def check_pdf_engines():
+    """Verifica quali motori PDF sono disponibili"""
+    weasyprint_available = False
+    wkhtmltopdf_available = False
+    
+    # Verifica WeasyPrint
+    try:
+        from weasyprint import HTML
+        weasyprint_available = True
+    except ImportError:
+        pass
+    
+    # Verifica wkhtmltopdf
+    try:
+        result = subprocess.run(["wkhtmltopdf", "--version"], 
+                              capture_output=True, timeout=5)
+        wkhtmltopdf_available = (result.returncode == 0)
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+        pass
+    
+    return weasyprint_available, wkhtmltopdf_available
+
+# Verifica motori PDF disponibili
+WEASYPRINT_AVAILABLE, WKHTMLTOPDF_AVAILABLE = check_pdf_engines()
+
+if WEASYPRINT_AVAILABLE:
     from weasyprint import HTML
     PDF_ENGINE = "weasyprint"
-except ImportError:
+elif WKHTMLTOPDF_AVAILABLE:
     PDF_ENGINE = "wkhtmltopdf"
+else:
+    PDF_ENGINE = "none"
 
 CONFIG_FILE = ".caldras.conf"
 NOTE_FILE = ".note.dat"
@@ -50,23 +77,70 @@ def generate_pdf(content_md, filename):
     style = """
     <meta charset="utf-8">
     <style>
-    body { font-family: 'Segoe UI', 'Arial', sans-serif; padding:2em; color:#1c1c23; }
-    h1, h2 { color:#6fc3df; }
+    /* Fallback per font emoji offline (funziona meglio su Windows) */
+    body { 
+        font-family: 'Segoe UI', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Microsoft YaHei', 'Arial Unicode MS', 'Lucida Sans Unicode', sans-serif; 
+        padding: 2em; 
+        color: #1c1c23;
+        font-feature-settings: "liga" on, "kern" on;
+        font-variant-emoji: unicode;
+    }
+    h1, h2 { color: #6fc3df; }
+    /* Supporto specifico per emoji */
+    .emoji {
+        font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Microsoft YaHei', 'Arial Unicode MS', 'Lucida Sans Unicode', monospace;
+        font-size: 1.2em;
+        display: inline-block;
+        font-variant-emoji: unicode;
+        text-rendering: optimizeLegibility;
+    }
+    /* Migliora la visualizzazione degli emoji nei titoli */
+    h1 .emoji, h2 .emoji, h3 .emoji {
+        font-size: 0.9em;
+        vertical-align: middle;
+    }
     </style>
     """
+    # Pre-processa il contenuto markdown per wrappare gli emoji
+    import re
+    # Pattern per emoji Unicode (range base degli emoji più comuni)
+    emoji_pattern = r'([\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002700-\U000027BF\U0001F900-\U0001F9FF\U0001F018-\U0001F0FF])'
+    content_md = re.sub(emoji_pattern, r'<span class="emoji">\1</span>', content_md)
+    
+    html_body = markdown.markdown(content_md)
     full_html = f"<html><head>{style}</head><body>{html_body}</body></html>"
+    # Controlla se hai un motore PDF disponibile
+    if PDF_ENGINE == "none":
+        return False, "Nessun motore PDF disponibile. Installa WeasyPrint (pip install weasyprint) o wkhtmltopdf."
+    
     try:
-        if PDF_ENGINE == "weasyprint" and HTML:
+        if PDF_ENGINE == "weasyprint" and WEASYPRINT_AVAILABLE:
             HTML(string=full_html).write_pdf(filename)
-            return True, "WeasyPrint"
-        else:
+            return True, "WeasyPrint (con supporto emoji migliorato)"
+        elif PDF_ENGINE == "wkhtmltopdf" and WKHTMLTOPDF_AVAILABLE:
             with tempfile.NamedTemporaryFile('w', delete=False, suffix=".html", encoding='utf-8') as fhtml:
                 fhtml.write(full_html)
                 html_path = fhtml.name
-            result = subprocess.run(["wkhtmltopdf", html_path, filename], capture_output=True)
-            return (result.returncode == 0), "wkhtmltopdf"
+            # Opzioni per wkhtmltopdf per migliorare il supporto Unicode/emoji
+            cmd = ["wkhtmltopdf", 
+                   "--encoding", "UTF-8", 
+                   "--enable-local-file-access",
+                   "--load-error-handling", "ignore",
+                   "--disable-smart-shrinking",
+                   "--print-media-type",
+                   html_path, filename]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            # Pulisci il file temporaneo
+            try:
+                os.unlink(html_path)
+            except:
+                pass
+            success_msg = "wkhtmltopdf (con supporto emoji migliorato)" if result.returncode == 0 else f"wkhtmltopdf error: {result.stderr}"
+            return (result.returncode == 0), success_msg
+        else:
+            return False, "Motore PDF non disponibile o non configurato correttamente."
     except Exception as e:
-        return False, str(e)
+        return False, f"Errore durante la generazione PDF: {str(e)}"
 
 def splash():
     root = tk.Tk()
