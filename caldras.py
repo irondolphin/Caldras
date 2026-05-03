@@ -161,12 +161,8 @@ def visualizza_nota(notes):
             access_granted()
             contenuto = decrypt_text(contenuto, pw)
         
-        # Chiedi il formato di visualizzazione
-        formato = input("Visualizzare come: (1) Testo normale (2) Markdown [1]: ").strip()
-        if formato == "2":
-            stampa_nota_markdown(titolo, contenuto, pw is not None)
-        else:
-            stampa_nota_cyber(titolo, contenuto, pw is not None)
+        stampa_nota_cyber(titolo, contenuto, pw is not None)
+        
     except:
         print(Fore.RED + "⚠️ Errore nella visualizzazione.")
 
